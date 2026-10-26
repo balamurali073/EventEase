@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}{{ event.title }} – EventEase{% endblock %}
+
+{% block content %}
+<!-- Event Header Hero -->
+<div class="event-header-hero">
+  <img src="{{ event.banner_url or 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80' }}" alt="{{ event.title }}" class="event-hero-img">
+  <div class="event-hero-overlay">
+    <span class="user-badge organizer" style="width: fit-content; margin-bottom: 12px;">{{ event.category }}</span>
+    <h1 style="font-size: 34px; margin-bottom: 8px; color: #fff;">{{ event.title }}</h1>
+    <div style="display: flex; gap: 20px; flex-wrap: wrap; color: var(--text-muted); font-size: 14px;">
+      <span>📍 {{ event.venue }}</span>
+      <span>📅 {{ event.event_date | datetime_format }}</span>
+      <span>👤 Organized by {{ event.organizer_name }}</span>
+    </div>
+  </div>
+</div>
+
+<div class="event-meta-grid">
+  <!-- Left Column: Details -->
+  <div>
+    <div class="detail-card">
+      <h2 style="font-size: 20px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">About This Event</h2>
+      <p style="white-space: pre-line; line-height: 1.8; color: var(--text-muted); font-size: 15px;">
+        {{ event.description }}
+      </p>
+    </div>
+
+    <div class="detail-card">
+      <h2 style="font-size: 20px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Event Policies & Information</h2>
+      <ul style="list-style-position: inside; color: var(--text-muted); line-height: 1.9; font-size: 14px;">
+        <li><strong>Ticket Hold Guarantee:</strong> When reserving, your tickets are held exclusively for 10 minutes.</li>
+        <li><strong>Sales Cutoff:</strong> {{ event.sales_cutoff_date | datetime_format }}.</li>
+        <li><strong>Refund & Transfer:</strong> Confirmed tickets feature unique verifiable cryptographic booking references.</li>
+        <li><strong>Organizer Contact:</strong> {{ event.organizer_email }}</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Right Column: Ticket Selection & Reservation Form -->
+  <div>
+    <div class="detail-card" style="position: sticky; top: 90px;">
+      <h3 style="font-size: 19px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+        <span>Select Tickets</span>
+        <span style="font-size: 12px; color: var(--accent-teal); font-weight: normal;">10-Min Temporary Hold</span>
+      </h3>
+
+      {% if not is_sales_open %}
+        <div class="alert alert-warning">
+          Ticket sales for this event have officially ended.
+        </div>
+      {% else %}
+        <form action="{{ url_for('reserve') }}" method="POST">
+          <div style="margin-bottom: 20px;">
+            {% for ticket in ticket_types %}
+              <label class="ticket-tier-card" style="cursor: {% if ticket.available_quantity > 0 %}pointer{% else %}not-allowed; opacity: 0.6;{% endif %}">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <input type="radio" name="ticket_type_id" value="{{ ticket.id }}"
+                         data-price="{{ ticket.price }}"
+                         data-available="{{ ticket.available_quantity }}"
+                         {% if loop.first and ticket.available_quantity > 0 %}checked{% endif %}
+                         {% if ticket.available_quantity <= 0 %}disabled{% endif %}>
+                  <div>
+                    <div class="ticket-tier-name">{{ ticket.name }}</div>
+                    <div style="font-size: 12px; color: var(--text-dim);">
+                      {% if ticket.available_quantity > 0 %}
+                        <span style="color: var(--status-success);">● {{ ticket.available_quantity }} tickets available</span>
+                      {% else %}
+                        <span style="color: var(--status-danger);">● Sold Out</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+                <div class="ticket-tier-price">${{ "%.2f"|format(ticket.price) }}</div>
+              </label>
+            {% endfor %}
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="ticketQuantity">Number of Tickets</label>
+            <input type="number" id="ticketQuantity" name="quantity" min="1" max="10" value="1" class="form-control">
+          </div>
+
+          <!-- Dynamic Pricing Calculation Box -->
+          <div style="background: var(--bg-surface); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted); margin-bottom: 6px;">
+              <span>Unit Price:</span>
+              <span id="calcUnitPrice">$0.00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 17px; font-weight: 700; color: #fff;">
+              <span>Total Estimated:</span>
+              <span id="calcTotalAmount" style="color: var(--primary-light);">$0.00</span>
+            </div>
+          </div>
+
+          {% if current_user %}
+            <button type="submit" class="btn btn-primary btn-block btn-lg">
+              Reserve Tickets (10-Min Hold)
+            </button>
+          {% else %}
+            <a href="{{ url_for('login', next=request.path) }}" class="btn btn-primary btn-block btn-lg">
+              Sign In to Reserve
+            </a>
+          {% endif %}
+          <p style="font-size: 12px; color: var(--text-dim); text-align: center; margin-top: 10px;">
+            Atomic inventory lock guarantees no double bookings.
+          </p>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

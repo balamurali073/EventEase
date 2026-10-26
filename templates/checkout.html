@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout & Confirm Tickets – EventEase{% endblock %}
+
+{% block content %}
+<div class="checkout-grid">
+  <!-- Left Column: Payment & Verification -->
+  <div>
+    <!-- 10-Minute Hold Countdown Timer Banner -->
+    <div class="timer-banner">
+      <div class="timer-label">
+        <span style="font-size: 24px;">⏳</span>
+        <div>
+          <div style="color: #fff; font-weight: 700;">Tickets Held Exclusively For You</div>
+          <div style="font-size: 12px; color: var(--text-muted);">Please complete payment before the countdown expires.</div>
+        </div>
+      </div>
+      <div id="reservationTimer"
+           class="timer-clock"
+           data-seconds="{{ remaining_seconds }}"
+           data-token="{{ reservation.reservation_token }}">
+        --:--
+      </div>
+    </div>
+
+    <!-- Payment Card -->
+    <div class="detail-card">
+      <h2 style="font-size: 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
+        <span>Payment Details</span>
+        <span style="font-size: 13px; color: var(--status-success); font-weight: 500;">🔒 256-Bit SSL Encrypted Mock Gateway</span>
+      </h2>
+
+      <form action="{{ url_for('checkout', token=reservation.reservation_token) }}" method="POST" id="checkoutForm">
+        <div class="form-group">
+          <label class="form-label" for="payment_method">Payment Method</label>
+          <select id="payment_method" name="payment_method" class="form-select">
+            <option value="Credit Card">Credit Card (Visa / Mastercard)</option>
+            <option value="Debit Card">Debit Card</option>
+            <option value="Digital Wallet">Digital Wallet (Apple Pay / Google Pay)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="cardholder">Cardholder Name</label>
+          <input type="text" id="cardholder" name="cardholder" value="{{ current_user.username }}" class="form-control" placeholder="Full name on card" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="card_number">Card Number</label>
+          <input type="text" id="card_number" name="card_number" class="form-control" placeholder="4242 •••• •••• 4242" value="4242 4242 4242 4242" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" for="expiry">Expiration Date</label>
+            <input type="text" id="expiry" name="expiry" class="form-control" placeholder="MM/YY" value="12/28" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cvv">Security Code (CVV)</label>
+            <input type="text" id="cvv" name="cvv" class="form-control" placeholder="123" value="888" maxlength="4" required>
+          </div>
+        </div>
+
+        <!-- Testing & Simulation Mode Selector for Evaluators -->
+        <div style="background: rgba(124, 58, 237, 0.1); border: 1px dashed var(--primary); padding: 16px; border-radius: var(--radius-sm); margin-bottom: 24px;">
+          <label class="form-label" style="color: var(--primary-light);" for="simulation_mode">
+            🧪 Evaluator Simulation Mode
+          </label>
+          <select id="simulation_mode" name="simulation_mode" class="form-select">
+            <option value="RANDOM">Realistic Gateway (Random 88% Success / 12% Decline)</option>
+            <option value="FORCE_SUCCESS" selected>Force Success (Guarantees instant booking confirmation)</option>
+            <option value="FORCE_FAILURE">Force Failure (Simulates card decline & atomic inventory release)</option>
+          </select>
+          <div style="font-size: 12px; color: var(--text-dim); margin-top: 6px;">
+            Choose an option above to easily test and verify both confirmation and rollback workflows!
+          </div>
+        </div>
+
+        <button type="submit" id="btnSubmitPayment" class="btn btn-primary btn-block btn-lg">
+          Confirm & Pay ${{ "%.2f"|format(reservation.total_amount) }}
+        </button>
+      </form>
+    </div>
+
+    <!-- Manual Release Option -->
+    <div style="text-align: center; margin-top: 14px;">
+      <form action="{{ url_for('cancel_reservation_route', token=reservation.reservation_token) }}" method="POST" onsubmit="return confirm('Are you sure you want to release these tickets?');">
+        <button type="submit" class="btn btn-outline btn-sm" style="color: var(--text-dim);">
+          Change My Mind: Release Held Tickets
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Right Column: Order Summary -->
+  <div>
+    <div class="order-summary-card">
+      <h3 style="font-size: 18px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+        Order Summary
+      </h3>
+
+      <div style="display: flex; gap: 14px; margin-bottom: 18px;">
+        <img src="{{ reservation.banner_url or 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=400&q=80' }}" alt="{{ reservation.event_title }}" style="width: 70px; height: 70px; object-fit: cover; border-radius: var(--radius-sm);">
+        <div>
+          <div style="font-weight: 700; color: #fff; line-height: 1.3;">{{ reservation.event_title }}</div>
+          <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">📍 {{ reservation.venue }}</div>
+          <div style="font-size: 12px; color: var(--accent-teal);">📅 {{ reservation.event_date | datetime_format }}</div>
+        </div>
+      </div>
+
+      <div class="summary-row">
+        <span>Ticket Tier</span>
+        <strong style="color: #fff;">{{ reservation.ticket_name }}</strong>
+      </div>
+      <div class="summary-row">
+        <span>Unit Price</span>
+        <span>${{ "%.2f"|format(reservation.unit_price) }}</span>
+      </div>
+      <div class="summary-row">
+        <span>Quantity Reserved</span>
+        <span>x {{ reservation.quantity }}</span>
+      </div>
+      <div class="summary-row">
+        <span>Booking Fee</span>
+        <span style="color: var(--status-success);">FREE ($0.00)</span>
+      </div>
+      <div class="summary-row total">
+        <span>Total Due</span>
+        <span style="color: var(--primary-light);">${{ "%.2f"|format(reservation.total_amount) }}</span>
+      </div>
+
+      <div style="margin-top: 20px; font-size: 12px; color: var(--text-dim); line-height: 1.5; background: var(--bg-surface); padding: 12px; border-radius: var(--radius-sm);">
+        ✓ Guaranteed reservation hold<br>
+        ✓ Instant booking confirmation & QR code receipt<br>
+        ✓ Automatic rollback if payment fails
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

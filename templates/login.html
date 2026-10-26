@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In – EventEase{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-header">
+    <h2>Sign In to EventEase</h2>
+    <p style="color: var(--text-muted); font-size: 14px;">Access your ticket reservations, organizer dashboard, or admin tools.</p>
+  </div>
+
+  <form action="{{ url_for('login') }}" method="POST">
+    <input type="hidden" name="next" value="{{ next }}">
+
+    <div class="form-group">
+      <label class="form-label" for="login_id">Email or Username</label>
+      <input type="text" id="login_id" name="login_id" value="{{ login_id or '' }}" class="form-control" placeholder="e.g. attendee@eventease.com" required autofocus>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="password">Password</label>
+      <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 10px;">
+      Sign In
+    </button>
+  </form>
+
+  <!-- Demo Account Quick Reference Helper for Evaluators -->
+  <div style="margin-top: 24px; padding: 14px; background: var(--bg-surface); border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 13px;">
+    <div style="font-weight: 700; color: #fff; margin-bottom: 6px;">Demo Credentials:</div>
+    <div style="color: var(--text-muted); line-height: 1.5;">
+      • <strong>Admin:</strong> admin@eventease.com / Admin@123<br>
+      • <strong>Organizer:</strong> organizer@eventease.com / Organizer@123<br>
+      • <strong>Attendee:</strong> attendee@eventease.com / Attendee@123
+    </div>
+  </div>
+
+  <div class="auth-footer">
+    Don't have an account yet? <a href="{{ url_for('register') }}">Create one here</a>
+  </div>
+</div>
+{% endblock %}

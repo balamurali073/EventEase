@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Organizer Dashboard – EventEase{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 16px;">
+  <div>
+    <h1 style="font-size: 28px; margin-bottom: 4px;">Organizer Control Center</h1>
+    <p style="color: var(--text-muted); font-size: 14px;">Monitor real-time ticket sales, gross revenue, inventory allocation, and attendee bookings.</p>
+  </div>
+  <a href="{{ url_for('create_event') }}" class="btn btn-primary">
+    + Create New Event
+  </a>
+</div>
+
+<!-- Metrics Row -->
+<div class="metrics-row">
+  <div class="metric-card">
+    <div class="metric-icon purple">📊</div>
+    <div class="metric-info">
+      <h4>Total Events</h4>
+      <div class="metric-value">{{ total_events }}</div>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon green">💰</div>
+    <div class="metric-info">
+      <h4>Gross Revenue</h4>
+      <div class="metric-value">${{ "{:,.2f}".format(total_revenue) }}</div>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon teal">🎟️</div>
+    <div class="metric-info">
+      <h4>Tickets Sold</h4>
+      <div class="metric-value">{{ "{:,}".format(total_tickets_sold) }}</div>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon amber">📦</div>
+    <div class="metric-info">
+      <h4>Confirmed Orders</h4>
+      <div class="metric-value">{{ "{:,}".format(total_bookings) }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Revenue Analytics Chart.js Section -->
+<div class="detail-card" style="margin-bottom: 32px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+      <h2 style="font-size: 18px; color: #fff;">Event Revenue Analytics</h2>
+      <p style="color: var(--text-muted); font-size: 13px;">Real-time breakdown of revenue performance across top events.</p>
+    </div>
+    <span class="user-badge organizer">Chart.js Live Data</span>
+  </div>
+  <div style="height: 280px; position: relative;">
+    <canvas id="organizerRevenueChart"></canvas>
+  </div>
+</div>
+
+<!-- Managed Events Table -->
+<div style="margin-bottom: 32px;">
+  <h2 style="font-size: 20px; margin-bottom: 16px;">Managed Events</h2>
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Event Title</th>
+          <th>Category</th>
+          <th>Event Date</th>
+          <th>Total Capacity</th>
+          <th>Available Stock</th>
+          <th>Sold / Reserved</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for evt in events %}
+          <tr>
+            <td>
+              <strong style="color: #fff;">{{ evt.title }}</strong>
+              <div style="font-size: 12px; color: var(--text-dim);">📍 {{ evt.venue }}</div>
+            </td>
+            <td><span class="chip" style="font-size: 11px; padding: 3px 8px;">{{ evt.category }}</span></td>
+            <td style="color: var(--accent-teal); font-size: 13px;">{{ evt.event_date | datetime_format("%b %d, %Y") }}</td>
+            <td>{{ evt.total_tickets }}</td>
+            <td>
+              {% if evt.available_tickets > 0 %}
+                <span style="color: var(--status-success); font-weight: 600;">{{ evt.available_tickets }}</span>
+              {% else %}
+                <span style="color: var(--status-danger); font-weight: 600;">0 (Sold Out)</span>
+              {% endif %}
+            </td>
+            <td>{{ evt.reserved_or_sold }}</td>
+            <td>
+              <span class="user-badge {% if evt.status == 'PUBLISHED' %}attendee{% else %}admin{% endif %}">
+                {{ evt.status }}
+              </span>
+            </td>
+            <td>
+              <div style="display: flex; gap: 8px;">
+                <a href="{{ url_for('event_detail', event_id=evt.id) }}" class="btn btn-outline btn-sm">Preview</a>
+                <a href="{{ url_for('edit_event', event_id=evt.id) }}" class="btn btn-secondary btn-sm">Edit</a>
+                <a href="{{ url_for('event_attendees', event_id=evt.id) }}" class="btn btn-primary btn-sm">Attendees</a>
+              </div>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 30px; color: var(--text-muted);">
+              You haven't created any events yet. Click "Create New Event" above to get started!
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Recent Bookings Table -->
+<div>
+  <h2 style="font-size: 20px; margin-bottom: 16px;">Recent Bookings for Your Events</h2>
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Booking ID</th>
+          <th>Event</th>
+          <th>Attendee</th>
+          <th>Ticket Tier</th>
+          <th>Qty</th>
+          <th>Amount Paid</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in recent_bookings %}
+          <tr>
+            <td style="font-family: var(--font-heading); font-weight: 700; color: var(--primary-light);">
+              {{ b.booking_reference }}
+            </td>
+            <td>{{ b.event_title }}</td>
+            <td>{{ b.attendee_username }}</td>
+            <td>{{ b.ticket_name }}</td>
+            <td>{{ b.quantity }}</td>
+            <td style="color: var(--status-success); font-weight: 600;">${{ "%.2f"|format(b.total_amount) }}</td>
+            <td style="color: var(--text-dim); font-size: 13px;">{{ b.created_at | datetime_format("%b %d, %I:%M %p") }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 24px; color: var(--text-muted);">
+              No bookings recorded yet.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

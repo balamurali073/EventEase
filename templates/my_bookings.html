@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}My Tickets & Bookings – EventEase{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+  <div>
+    <h1 style="font-size: 28px; margin-bottom: 4px;">My Ticket Bookings</h1>
+    <p style="color: var(--text-muted); font-size: 14px;">View your confirmed reservations, download digital passes, and track event schedules.</p>
+  </div>
+  <a href="{{ url_for('index') }}" class="btn btn-primary btn-sm">Find More Events</a>
+</div>
+
+{% if bookings %}
+  <div style="display: grid; gap: 16px;">
+    {% for b in bookings %}
+      <div class="detail-card" style="margin-bottom: 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+        <div style="display: flex; gap: 18px; align-items: center;">
+          <img src="{{ b.banner_url or 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=300&q=80' }}" alt="{{ b.event_title }}" style="width: 80px; height: 80px; object-fit: cover; border-radius: var(--radius-sm);">
+          <div>
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px;">
+              <span class="user-badge attendee">{{ b.status }}</span>
+              <span style="font-size: 13px; color: var(--primary-light); font-weight: 700;">{{ b.booking_reference }}</span>
+            </div>
+            <h3 style="font-size: 18px; color: #fff; margin-bottom: 4px;">{{ b.event_title }}</h3>
+            <div style="font-size: 13px; color: var(--text-muted);">
+              📍 {{ b.venue }} &bull; 📅 {{ b.event_date | datetime_format }}
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 24px;">
+          <div>
+            <div style="font-size: 12px; color: var(--text-dim); text-transform: uppercase;">Ticket Tier</div>
+            <div style="font-weight: 600; color: #fff;">{{ b.ticket_name }} &times; {{ b.quantity }}</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; color: var(--text-dim); text-transform: uppercase;">Amount Paid</div>
+            <div style="font-weight: 700; color: var(--status-success); font-size: 16px;">${{ "%.2f"|format(b.total_amount) }}</div>
+          </div>
+          <a href="{{ url_for('confirmation', booking_ref=b.booking_reference) }}" class="btn btn-outline btn-sm">
+            View Pass & QR
+          </a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div style="text-align: center; padding: 60px 20px; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+    <div style="font-size: 40px; margin-bottom: 16px;">🎟️</div>
+    <h3 style="color: #fff; margin-bottom: 8px;">No confirmed bookings yet</h3>
+    <p style="color: var(--text-muted); margin-bottom: 24px; max-width: 450px; margin-left: auto; margin-right: auto;">
+      You have not reserved or purchased any tickets yet. Browse trending conferences, concerts, and gatherings to make your first reservation!
+    </p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">Explore Available Events</a>
+  </div>
+{% endif %}
+{% endblock %}

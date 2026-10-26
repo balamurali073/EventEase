@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Create an Account – EventEase{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-header">
+    <h2>Join EventEase</h2>
+    <p style="color: var(--text-muted); font-size: 14px;">Select your primary role and get started in seconds.</p>
+  </div>
+
+  <form action="{{ url_for('register') }}" method="POST">
+    <div class="form-group">
+      <label class="form-label" for="username">Username</label>
+      <input type="text" id="username" name="username" value="{{ username or '' }}" class="form-control" placeholder="johndoe" required autofocus>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="email">Email Address</label>
+      <input type="email" id="email" name="email" value="{{ email or '' }}" class="form-control" placeholder="john@example.com" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="role">Account Type</label>
+      <select id="role" name="role" class="form-select">
+        <option value="attendee" {% if role == 'attendee' or not role %}selected{% endif %}>Attendee (Browse & Reserve Tickets)</option>
+        <option value="organizer" {% if role == 'organizer' %}selected{% endif %}>Event Organizer (Create & Manage Events)</option>
+        <option value="admin" {% if role == 'admin' %}selected{% endif %}>System Administrator (Platform Oversight)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="password">Password</label>
+      <input type="password" id="password" name="password" class="form-control" placeholder="At least 6 characters" minlength="6" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="confirm_password">Confirm Password</label>
+      <input type="password" id="confirm_password" name="confirm_password" class="form-control" placeholder="Repeat your password" minlength="6" required>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 10px;">
+      Create Account
+    </button>
+  </form>
+
+  <div class="auth-footer">
+    Already registered? <a href="{{ url_for('login') }}">Sign In instead</a>
+  </div>
+</div>
+{% endblock %}

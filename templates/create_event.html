@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Create New Event – EventEase{% endblock %}
+
+{% block content %}
+<div style="max-width: 840px; margin: 0 auto;">
+  <div style="margin-bottom: 24px;">
+    <h1 style="font-size: 28px; margin-bottom: 6px;">Create & Publish Event</h1>
+    <p style="color: var(--text-muted); font-size: 14px;">Define event logistics, banner artwork, and multi-tier ticket categories.</p>
+  </div>
+
+  <form action="{{ url_for('create_event') }}" method="POST">
+    <!-- Event Details Card -->
+    <div class="detail-card">
+      <h2 style="font-size: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">Event Information</h2>
+
+      <div class="form-group">
+        <label class="form-label" for="title">Event Title *</label>
+        <input type="text" id="title" name="title" class="form-control" placeholder="e.g. NextGen Web & Cloud Developer Summit 2026" required>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label class="form-label" for="category">Category *</label>
+          <select id="category" name="category" class="form-select">
+            <option value="Technology">Technology</option>
+            <option value="Music">Music</option>
+            <option value="Business">Business</option>
+            <option value="Food & Drink">Food & Drink</option>
+            <option value="Gaming">Gaming</option>
+            <option value="Arts & Culture">Arts & Culture</option>
+            <option value="Sports">Sports</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="venue">Venue / Location *</label>
+          <input type="text" id="venue" name="venue" class="form-control" placeholder="e.g. Moscone Convention Center, San Francisco" required>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label class="form-label" for="event_date">Event Date & Time *</label>
+          <input type="datetime-local" id="event_date" name="event_date" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="sales_cutoff_date">Ticket Sales Cutoff Date *</label>
+          <input type="datetime-local" id="sales_cutoff_date" name="sales_cutoff_date" class="form-control" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="banner_url">Banner Artwork Image URL</label>
+        <input type="url" id="banner_url" name="banner_url" class="form-control" placeholder="https://images.unsplash.com/photo-..." value="https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80">
+        <small style="color: var(--text-dim); font-size: 12px; margin-top: 4px; display: block;">High resolution banner URL (defaults to tech conference photo if left unchanged).</small>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="description">Full Event Description *</label>
+        <textarea id="description" name="description" rows="5" class="form-control" placeholder="Describe the agenda, speakers, activities, dress code, and details..." required></textarea>
+      </div>
+    </div>
+
+    <!-- Ticket Tiers Configuration Card -->
+    <div class="detail-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+        <div>
+          <h2 style="font-size: 18px;">Ticket Categories & Pricing</h2>
+          <p style="color: var(--text-muted); font-size: 13px;">Create separate ticket tiers such as General Admission, VIP, or Early Bird with independent stock allocations.</p>
+        </div>
+        <button type="button" id="btnAddTicketTier" class="btn btn-secondary btn-sm">
+          + Add Ticket Tier
+        </button>
+      </div>
+
+      <div id="ticketTiersContainer">
+        <!-- Default Tier 1: General Admission -->
+        <div class="ticket-tier-input-row" style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; margin-bottom: 12px; align-items: flex-end;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Tier Name</label>
+            <input type="text" name="ticket_name[]" class="form-control" value="General Admission" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Price ($)</label>
+            <input type="number" step="0.01" min="0" name="ticket_price[]" class="form-control" value="89.00" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Quantity</label>
+            <input type="number" min="1" name="ticket_quantity[]" class="form-control" value="100" required>
+          </div>
+          <div style="width: 72px;"></div> <!-- Spacer for first non-removable row -->
+        </div>
+
+        <!-- Default Tier 2: VIP -->
+        <div class="ticket-tier-input-row" style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; margin-bottom: 12px; align-items: flex-end;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Tier Name</label>
+            <input type="text" name="ticket_name[]" class="form-control" value="VIP Access Pass" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Price ($)</label>
+            <input type="number" step="0.01" min="0" name="ticket_price[]" class="form-control" value="249.00" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Quantity</label>
+            <input type="number" min="1" name="ticket_quantity[]" class="form-control" value="30" required>
+          </div>
+          <button type="button" class="btn btn-danger btn-sm" style="height: 44px; padding: 0 14px;" onclick="this.closest('.ticket-tier-input-row').remove()">
+            Remove
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+      <a href="{{ url_for('organizer_dashboard') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary btn-lg">Publish Event & Tickets</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

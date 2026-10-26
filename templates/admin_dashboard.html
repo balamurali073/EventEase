@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}System Admin Console – EventEase{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 28px;">
+  <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
+    <span class="user-badge admin">Super Administrator</span>
+  </div>
+  <h1 style="font-size: 28px;">Platform Administration & Governance</h1>
+  <p style="color: var(--text-muted); font-size: 14px;">Oversee multi-tenant accounts, moderate events, inspect database health, and review transaction logs.</p>
+</div>
+
+<!-- Platform KPI Cards -->
+<div class="metrics-row">
+  <div class="metric-card">
+    <div class="metric-icon purple">👥</div>
+    <div class="metric-info">
+      <h4>Total Users</h4>
+      <div class="metric-value">{{ metrics.total_users }}</div>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon teal">🏢</div>
+    <div class="metric-info">
+      <h4>Organizers</h4>
+      <div class="metric-value">{{ metrics.total_organizers }}</div>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon amber">🎪</div>
+    <div class="metric-info">
+      <h4>Total Events</h4>
+      <div class="metric-value">{{ metrics.total_events }}</div>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon green">💵</div>
+    <div class="metric-info">
+      <h4>Platform Revenue</h4>
+      <div class="metric-value">${{ "{:,.2f}".format(metrics.total_revenue) }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 1: User Management -->
+<div style="margin-bottom: 40px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <h2 style="font-size: 20px;">User Accounts & Access Control</h2>
+    <span style="font-size: 13px; color: var(--text-dim);">Total registered: {{ users|length }}</span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Username</th>
+          <th>Email Address</th>
+          <th>Role</th>
+          <th>Account Status</th>
+          <th>Registered</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td>#{{ u.id }}</td>
+            <td><strong style="color: #fff;">{{ u.username }}</strong></td>
+            <td>{{ u.email }}</td>
+            <td><span class="user-badge {{ u.role }}">{{ u.role }}</span></td>
+            <td>
+              {% if u.is_active %}
+                <span style="color: var(--status-success); font-weight: 600;">● Active</span>
+              {% else %}
+                <span style="color: var(--status-danger); font-weight: 600;">● Deactivated</span>
+              {% endif %}
+            </td>
+            <td style="color: var(--text-dim); font-size: 13px;">{{ u.created_at | datetime_format("%b %d, %Y") }}</td>
+            <td>
+              {% if u.id != current_user.id %}
+                <form action="{{ url_for('toggle_user_status', user_id=u.id) }}" method="POST" style="display: inline;">
+                  <button type="submit" class="btn btn-outline btn-sm" style="font-size: 12px; padding: 4px 10px;">
+                    {% if u.is_active %}Deactivate{% else %}Activate{% endif %}
+                  </button>
+                </form>
+              {% else %}
+                <span style="color: var(--text-dim); font-size: 12px;">(Current Admin)</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section 2: Platform Events Oversight -->
+<div style="margin-bottom: 40px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <h2 style="font-size: 20px;">Platform Events Oversight</h2>
+    <span style="font-size: 13px; color: var(--text-dim);">Total events: {{ events|length }}</span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Title & Venue</th>
+          <th>Organizer</th>
+          <th>Category</th>
+          <th>Event Date</th>
+          <th>Stock (Avail / Total)</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in events %}
+          <tr>
+            <td>#{{ e.id }}</td>
+            <td>
+              <strong style="color: #fff;">{{ e.title }}</strong>
+              <div style="font-size: 12px; color: var(--text-dim);">📍 {{ e.venue }}</div>
+            </td>
+            <td>{{ e.organizer_name }}</td>
+            <td><span class="chip" style="font-size: 11px; padding: 2px 8px;">{{ e.category }}</span></td>
+            <td style="color: var(--accent-teal); font-size: 13px;">{{ e.event_date | datetime_format("%b %d, %Y") }}</td>
+            <td>{{ e.available_tickets }} / {{ e.total_tickets }}</td>
+            <td>
+              <span class="user-badge {% if e.status == 'PUBLISHED' %}attendee{% else %}admin{% endif %}">
+                {{ e.status }}
+              </span>
+            </td>
+            <td>
+              <div style="display: flex; gap: 6px;">
+                <a href="{{ url_for('event_detail', event_id=e.id) }}" class="btn btn-outline btn-sm">Preview</a>
+                <form action="{{ url_for('toggle_event_status', event_id=e.id) }}" method="POST" style="display: inline;">
+                  <button type="submit" class="btn btn-secondary btn-sm">
+                    {% if e.status == 'PUBLISHED' %}Unpublish{% else %}Publish{% endif %}
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section 3: Transactions & Audit Logs -->
+<div>
+  <h2 style="font-size: 20px; margin-bottom: 16px;">Payment Gateway & Audit Trail</h2>
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Txn Reference</th>
+          <th>User</th>
+          <th>Amount</th>
+          <th>Payment Method</th>
+          <th>Status</th>
+          <th>Details / Failure Reason</th>
+          <th>Timestamp</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in transactions %}
+          <tr>
+            <td style="font-family: var(--font-heading); font-weight: 700; color: var(--primary-light);">
+              {{ tx.transaction_reference }}
+            </td>
+            <td>{{ tx.username }}</td>
+            <td style="font-weight: 600; color: #fff;">${{ "%.2f"|format(tx.amount) }}</td>
+            <td>{{ tx.payment_method }}</td>
+            <td>
+              <span class="user-badge {% if tx.status == 'SUCCESS' %}attendee{% else %}admin{% endif %}">
+                {{ tx.status }}
+              </span>
+            </td>
+            <td style="font-size: 13px; color: {% if tx.status == 'FAILED' %}var(--status-danger){% else %}var(--text-dim){% endif %};">
+              {{ tx.failure_reason or 'Payment verified & settled.' }}
+            </td>
+            <td style="color: var(--text-dim); font-size: 13px;">{{ tx.created_at | datetime_format("%b %d, %I:%M %p") }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 24px; color: var(--text-muted);">
+              No transactions recorded yet.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

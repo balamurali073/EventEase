@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Explore Top Events – EventEase{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+  <h1 class="hero-title">Discover, Reserve, Experience.</h1>
+  <p class="hero-subtitle">
+    Reserve your tickets with real-time 10-minute inventory holds. Experience premier conferences, music festivals, culinary summits, and tech showcases.
+  </p>
+  {% if not current_user %}
+    <div style="display: flex; gap: 12px; justify-content: center;">
+      <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">Join EventEase</a>
+      <a href="{{ url_for('login') }}" class="btn btn-secondary btn-lg">Attendee Login</a>
+    </div>
+  {% endif %}
+</section>
+
+<!-- Search and Filter Bar -->
+<section class="search-filter-card">
+  <form action="{{ url_for('index') }}" method="GET" class="search-form">
+    <div class="search-input-wrap">
+      <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="Search events by title, keyword, or venue...">
+    </div>
+    <select name="category" class="form-select" style="max-width: 200px;">
+      <option value="All" {% if not selected_category or selected_category == 'All' %}selected{% endif %}>All Categories</option>
+      {% for cat in categories %}
+        <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary">Find Events</button>
+    {% if search_query or (selected_category and selected_category != 'All') %}
+      <a href="{{ url_for('index') }}" class="btn btn-secondary">Reset</a>
+    {% endif %}
+  </form>
+
+  <div class="category-chips">
+    <a href="{{ url_for('index') }}" class="chip {% if not selected_category or selected_category == 'All' %}active{% endif %}">All</a>
+    {% for cat in categories %}
+      <a href="{{ url_for('index', category=cat) }}" class="chip {% if selected_category == cat %}active{% endif %}">{{ cat }}</a>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- Event Grid -->
+<div class="events-grid">
+  {% for event in events %}
+    <div class="event-card">
+      <div class="event-banner-wrap">
+        <img src="{{ event.banner_url or 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80' }}" alt="{{ event.title }}" class="event-banner">
+        <span class="event-category-badge">{{ event.category }}</span>
+      </div>
+      
+      <div class="event-content">
+        <div class="event-date-row">
+          <span>📅 {{ event.event_date | datetime_format("%a, %b %d, %Y • %I:%M %p") }}</span>
+        </div>
+        
+        <h2 class="event-title">{{ event.title }}</h2>
+        <div class="event-venue">📍 {{ event.venue }}</div>
+        
+        <p class="event-desc">{{ event.description }}</p>
+
+        <div class="event-card-footer">
+          <div>
+            <div class="price-tag">
+              From <strong>${{ "%.2f"|format(event.min_price or 0) }}</strong>
+            </div>
+            {% set avail = event.total_available_tickets or 0 %}
+            {% if avail > 20 %}
+              <span class="stock-tag stock-available">{{ avail }} available</span>
+            {% elif avail > 0 %}
+              <span class="stock-tag stock-low">Only {{ avail }} left!</span>
+            {% else %}
+              <span class="stock-tag stock-soldout">Sold Out</span>
+            {% endif %}
+          </div>
+          
+          <a href="{{ url_for('event_detail', event_id=event.id) }}" class="btn btn-primary btn-sm">
+            View & Reserve
+          </a>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+      <h3 style="margin-bottom: 12px; color: var(--text-main);">No matching events found</h3>
+      <p style="color: var(--text-muted); margin-bottom: 24px;">Try adjusting your keywords or selecting a different category.</p>
+      <a href="{{ url_for('index') }}" class="btn btn-secondary">Clear Filters</a>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Attendees: {{ event.title }} – EventEase{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 14px;">
+  <div>
+    <a href="{{ url_for('organizer_dashboard') }}" style="color: var(--primary-light); font-size: 13px;">&larr; Back to Organizer Dashboard</a>
+    <h1 style="font-size: 26px; margin-top: 6px;">Attendee Roster: {{ event.title }}</h1>
+    <p style="color: var(--text-muted); font-size: 14px;">Total Confirmed Attendees: <strong>{{ attendees|length }}</strong></p>
+  </div>
+  <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨️ Print / Export Roster</button>
+</div>
+
+<div class="table-responsive">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Booking Reference</th>
+        <th>Attendee Name</th>
+        <th>Email Address</th>
+        <th>Ticket Tier</th>
+        <th>Quantity</th>
+        <th>Total Paid</th>
+        <th>Payment Method</th>
+        <th>Booking Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for att in attendees %}
+        <tr>
+          <td style="font-family: var(--font-heading); font-weight: 700; color: var(--primary-light);">
+            {{ att.booking_reference }}
+          </td>
+          <td><strong style="color: #fff;">{{ att.username }}</strong></td>
+          <td>{{ att.email }}</td>
+          <td><span class="user-badge attendee">{{ att.ticket_name }}</span></td>
+          <td>{{ att.quantity }}</td>
+          <td style="color: var(--status-success); font-weight: 600;">${{ "%.2f"|format(att.total_amount) }}</td>
+          <td>{{ att.payment_method }}</td>
+          <td style="color: var(--text-dim); font-size: 13px;">{{ att.created_at | datetime_format("%b %d, %Y - %I:%M %p") }}</td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">
+            No confirmed attendees yet for this event.
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
