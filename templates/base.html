@@ -5,6 +5,67 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}EventEase – Multi-Tenant Event & Ticket Reservation System{% endblock %}</title>
   <meta name="description" content="Discover premium events, reserve tickets with temporary holds, and enjoy seamless booking with EventEase.">
+
+  <!-- Critical Theme Styles (Ensures Dark Navy & Purple Theme renders immediately) -->
+  <style>
+    :root {
+      --bg-main: #0B0F19;
+      --bg-card: #111827;
+      --bg-surface: #1E293B;
+      --border-color: #243042;
+      --primary: #7C3AED;
+      --primary-hover: #6D28D9;
+      --primary-light: #A78BFA;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+    }
+    html, body {
+      background-color: #0B0F19 !important;
+      color: #F8FAFC !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    a { color: #A78BFA; text-decoration: none; }
+    a:hover { color: #FFFFFF; }
+    .navbar {
+      background: rgba(17, 24, 39, 0.95);
+      border-bottom: 1px solid #243042;
+      padding: 14px 20px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn-primary { background-color: #7C3AED !important; color: #FFFFFF !important; border: none; }
+    .btn-secondary { background-color: #1E293B !important; color: #F8FAFC !important; border: 1px solid #243042; }
+    .btn-outline { background: transparent; border: 1px solid #243042; color: #94A3B8; }
+    .user-badge {
+      display: inline-flex;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .user-badge.admin { background: rgba(239, 68, 68, 0.2); color: #F87171; }
+    .user-badge.organizer { background: rgba(124, 58, 237, 0.2); color: #A78BFA; }
+    .user-badge.attendee { background: rgba(16, 185, 129, 0.2); color: #34D399; }
+    .event-card, .detail-card, .order-summary-card, .auth-wrapper {
+      background: #111827;
+      border: 1px solid #243042;
+    }
+    ul { list-style: none; margin: 0; padding: 0; }
+  </style>
+
+  <!-- External Stylesheet using url_for() syntax -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -75,7 +136,8 @@
     </div>
   </footer>
 
-  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  <!-- Client-side Script with defer -->
+  <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

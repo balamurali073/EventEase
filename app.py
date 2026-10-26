@@ -3,7 +3,7 @@ import functools
 from datetime import datetime, timezone
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    flash, session, jsonify, abort
+    flash, session, jsonify, abort, send_from_directory
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from database import (
@@ -23,6 +23,11 @@ app.secret_key = os.environ.get('SECRET_KEY', 'eventease-super-secret-production
 
 # Ensure DB tables & initial seed exist (essential for Vercel /tmp/ serverless cold starts)
 ensure_db_ready()
+
+# Explicit static file handler fallback for serverless runtimes
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    return send_from_directory(os.path.join(BASE_DIR, 'static'), filename)
 
 # Daemon background thread should only run in persistent servers, not in ephemeral serverless containers
 if not os.environ.get('VERCEL') and not os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
