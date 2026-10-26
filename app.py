@@ -7,17 +7,26 @@ from flask import (
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from database import (
-    get_db_connection, init_db, reserve_tickets,
+    get_db_connection, init_db, ensure_db_ready, reserve_tickets,
     process_checkout, cancel_reservation, cleanup_expired_reservations,
     start_background_cleanup_worker, utc_now
 )
 
-app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, 'templates'),
+    static_folder=os.path.join(BASE_DIR, 'static')
+)
 app.secret_key = os.environ.get('SECRET_KEY', 'eventease-super-secret-production-key-2026')
 
-# Initialize DB and start daemon expiration cleanup worker
-init_db()
-start_background_cleanup_worker(interval_seconds=30)
+# Ensure DB tables & initial seed exist (essential for Vercel /tmp/ serverless cold starts)
+ensure_db_ready()
+
+# Daemon background thread should only run in persistent servers, not in ephemeral serverless containers
+if not os.environ.get('VERCEL') and not os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
+    start_background_cleanup_worker(interval_seconds=30)
 
 # -------------------------------------------------------------
 # Context Processors & Template Filters
@@ -102,7 +111,6 @@ def register():
 
         conn = get_db_connection()
         try:
-            # Check unique username or email
             existing = conn.execute(
                 "SELECT id FROM users WHERE username = ? OR email = ?",
                 (username, email)
@@ -119,7 +127,6 @@ def register():
             conn.commit()
             user_id = cur.lastrowid
 
-            # Auto-login upon registration
             session['user_id'] = user_id
             session['username'] = username
             session['email'] = email
@@ -169,7 +176,6 @@ def login():
             flash("Your account has been deactivated by an administrator.", "danger")
             return render_template('login.html')
 
-        # Store session
         session['user_id'] = user['id']
         session['username'] = user['username']
         session['email'] = user['email']
@@ -229,7 +235,6 @@ def index():
 
     events = conn.execute(sql, params).fetchall()
 
-    # Get distinct categories for filtering
     cats = conn.execute(
         "SELECT DISTINCT category FROM events WHERE status = 'PUBLISHED' ORDER BY category"
     ).fetchall()
@@ -255,7 +260,6 @@ def event_detail(event_id):
         conn.close()
         abort(404)
 
-    # Fetch all ticket types with active inventory
     ticket_types = conn.execute("""
         SELECT * FROM ticket_types
         WHERE event_id = ?
@@ -264,7 +268,6 @@ def event_detail(event_id):
 
     conn.close()
 
-    # Check if sales cutoff has passed
     is_sales_open = True
     try:
         cutoff = datetime.fromisoformat(event['sales_cutoff_date'].replace(' ', 'T'))
@@ -324,7 +327,6 @@ def checkout(token):
 
     if res['status'] == 'CONFIRMED':
         flash("This reservation has already been confirmed.", "info")
-        # Find booking reference
         conn = get_db_connection()
         booking = conn.execute("SELECT booking_reference FROM bookings WHERE reservation_id = ?", (res['id'],)).fetchone()
         conn.close()
@@ -336,7 +338,6 @@ def checkout(token):
         flash(f"This reservation is {res['status'].lower()}. Tickets were released back to inventory.", "warning")
         return redirect(url_for('event_detail', event_id=res['event_id']))
 
-    # Check expiration
     expires_at = datetime.fromisoformat(res['expires_at'].replace(' ', 'T'))
     remaining_seconds = max(0, int((expires_at - utc_now()).total_seconds()))
 
@@ -398,7 +399,6 @@ def confirmation(booking_ref):
         flash("Booking confirmation not found.", "danger")
         return redirect(url_for('index'))
 
-    # Security check: User must own booking or be admin
     if booking['user_id'] != session['user_id'] and session.get('role') != 'admin':
         flash("Unauthorized booking access.", "danger")
         return redirect(url_for('index'))
@@ -436,7 +436,6 @@ def organizer_dashboard():
 
     conn = get_db_connection()
 
-    # If admin, show all events or organizer's events
     if is_admin:
         events = conn.execute("""
             SELECT e.*, u.username as organizer_name,
@@ -528,7 +527,6 @@ def create_event():
         sales_cutoff = request.form.get('sales_cutoff_date', '').strip()
         banner_url = request.form.get('banner_url', '').strip()
 
-        # Ticket Types (arrays from dynamic form)
         ticket_names = request.form.getlist('ticket_name[]')
         ticket_prices = request.form.getlist('ticket_price[]')
         ticket_quantities = request.form.getlist('ticket_quantity[]')
@@ -594,7 +592,6 @@ def edit_event(event_id):
         conn.close()
         abort(404)
 
-    # Permission check
     if event['organizer_id'] != session['user_id'] and session.get('role') != 'admin':
         conn.close()
         flash("You do not have permission to edit this event.", "danger")
@@ -618,7 +615,6 @@ def edit_event(event_id):
                 WHERE id = ?
             """, (title, description, category, venue, event_date, sales_cutoff, banner_url, status, event_id))
 
-            # New ticket tier additions
             new_names = request.form.getlist('new_ticket_name[]')
             new_prices = request.form.getlist('new_ticket_price[]')
             new_quantities = request.form.getlist('new_ticket_quantity[]')
@@ -682,7 +678,6 @@ def admin_dashboard():
     cleanup_expired_reservations()
     conn = get_db_connection()
 
-    # System Metrics
     total_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
     total_organizers = conn.execute("SELECT COUNT(*) FROM users WHERE role = 'organizer'").fetchone()[0]
     total_attendees = conn.execute("SELECT COUNT(*) FROM users WHERE role = 'attendee'").fetchone()[0]
@@ -690,7 +685,6 @@ def admin_dashboard():
     total_bookings = conn.execute("SELECT COUNT(*) FROM bookings WHERE status = 'CONFIRMED'").fetchone()[0]
     total_revenue = conn.execute("SELECT COALESCE(SUM(total_amount), 0) FROM bookings WHERE status = 'CONFIRMED'").fetchone()[0]
 
-    # Lists
     users = conn.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
     events = conn.execute("""
         SELECT e.*, u.username as organizer_name,
@@ -763,7 +757,6 @@ def toggle_event_status(event_id):
 # -------------------------------------------------------------
 @app.route('/api/reservation-status/<token>')
 def api_reservation_status(token):
-    """Returns remaining seconds on hold and status for countdown timer."""
     cleanup_expired_reservations()
     conn = get_db_connection()
     res = conn.execute("SELECT status, expires_at FROM reservations WHERE reservation_token = ?", (token,)).fetchone()
@@ -785,7 +778,6 @@ def api_reservation_status(token):
 @login_required
 @role_required(['organizer', 'admin'])
 def api_organizer_chart_data():
-    """Provides revenue and bookings distribution for Chart.js."""
     user_id = session['user_id']
     is_admin = session.get('role') == 'admin'
 
@@ -825,7 +817,6 @@ def api_organizer_chart_data():
         'tickets_sold': tickets_sold
     })
 
-# REST API for Postman Collection
 @app.route('/api/auth/register', methods=['POST'])
 def api_register():
     data = request.get_json() or {}
@@ -957,7 +948,7 @@ def api_checkout():
     token = data.get('reservation_token')
     user_id = session.get('user_id') or data.get('user_id')
     payment_method = data.get('payment_method', 'Credit Card')
-    force_outcome = data.get('force_outcome') # 'SUCCESS' or 'FAILED'
+    force_outcome = data.get('force_outcome')
 
     if not token or not user_id:
         return jsonify({'error': 'reservation_token and user_id required'}), 400
@@ -1004,9 +995,5 @@ def api_admin_metrics():
     conn.close()
     return jsonify(metrics)
 
-# -------------------------------------------------------------
-# Run Server
-# -------------------------------------------------------------
 if __name__ == '__main__':
-    # Local development server
     app.run(host='127.0.0.1', port=5000, debug=True)

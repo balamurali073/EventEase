@@ -5,7 +5,12 @@ from datetime import datetime, timezone, timedelta
 import threading
 import time
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'eventease.db')
+IS_VERCEL = bool(os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME'))
+
+if IS_VERCEL:
+    DATABASE_PATH = '/tmp/eventease.db'
+else:
+    DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'eventease.db')
 
 def utc_now():
     """Returns current UTC datetime without tzinfo for consistent SQLite storage."""
@@ -16,7 +21,11 @@ def get_db_connection():
     conn = sqlite3.connect(DATABASE_PATH, timeout=15.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
-    conn.execute("PRAGMA journal_mode = WAL;")
+    # In Vercel serverless /tmp, standard journal or WAL works
+    try:
+        conn.execute("PRAGMA journal_mode = WAL;")
+    except Exception:
+        pass
     conn.execute("PRAGMA busy_timeout = 10000;")
     return conn
 
@@ -138,6 +147,17 @@ def init_db():
 
         conn.commit()
 
+def ensure_db_ready():
+    """Ensures database tables and initial demo seed data exist (crucial for Vercel /tmp/ cold starts)."""
+    need_seed = not os.path.exists(DATABASE_PATH) or os.path.getsize(DATABASE_PATH) == 0
+    init_db()
+    if need_seed:
+        try:
+            from init_db import seed_database
+            seed_database(force_reset=False)
+        except Exception as e:
+            pass
+
 # -------------------------------------------------------------
 # Atomic Concurrency Safe Ticket Reservation
 # -------------------------------------------------------------
@@ -178,7 +198,7 @@ def reserve_tickets(user_id, ticket_type_id, quantity):
                 conn.rollback()
                 return False, "Ticket sales for this event have closed.", None
         except Exception:
-            pass # Continue if format varies
+            pass
 
         # Conditional update: only decrease if available_quantity >= requested quantity
         cursor = conn.execute("""
@@ -239,7 +259,7 @@ def process_checkout(reservation_token, user_id, payment_method, force_outcome=N
     Returns (success: bool, result_dict_or_error)
     """
     import random
-    cleanup_expired_reservations() # Ensure state is clean before checking out
+    cleanup_expired_reservations()
 
     conn = get_db_connection()
     try:
@@ -291,14 +311,12 @@ def process_checkout(reservation_token, user_id, payment_method, force_outcome=N
             payment_success = False
             failure_reason = "Card declined: Insufficient funds or simulated card verification failure."
         else:
-            # Random simulation: 88% success rate
             payment_success = random.random() < 0.88
             failure_reason = None if payment_success else "Payment gateway timeout or bank decline."
 
         txn_ref = f"TXN-{uuid.uuid4().hex[:10].upper()}"
 
         if not payment_success:
-            # Record failed transaction
             conn.execute("""
                 INSERT INTO transactions (
                     transaction_reference, reservation_id, user_id, amount,
@@ -306,7 +324,6 @@ def process_checkout(reservation_token, user_id, payment_method, force_outcome=N
                 ) VALUES (?, ?, ?, ?, ?, 'FAILED', ?)
             """, (txn_ref, res['id'], user_id, res['total_amount'], payment_method, failure_reason))
 
-            # Mark reservation as CANCELLED and return tickets atomically
             conn.execute("UPDATE reservations SET status = 'CANCELLED' WHERE id = ?", (res['id'],))
             conn.execute("""
                 UPDATE ticket_types
@@ -330,10 +347,8 @@ def process_checkout(reservation_token, user_id, payment_method, force_outcome=N
 
         booking_id = booking_cursor.lastrowid
 
-        # Update reservation status to CONFIRMED
         conn.execute("UPDATE reservations SET status = 'CONFIRMED' WHERE id = ?", (res['id'],))
 
-        # Record successful transaction linked to booking
         conn.execute("""
             INSERT INTO transactions (
                 transaction_reference, booking_id, reservation_id, user_id,
